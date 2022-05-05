@@ -55,6 +55,32 @@ class BaseSoC(SoCMini):
                 pads         = platform.request_all("user_led"),
                 sys_clk_freq = sys_clk_freq)
 
+
+        # Standalone SoC Generation/Re-Integration -------------------------------------------------
+
+        # Generate standalone SoC.
+        os.system("litex_soc_gen --cpu-type=femtorv --bus-standard=wishbone --sys-clk-freq=100e6 --build")
+
+        # Add standalone SoC sources.
+        #  ...FIXME...
+        from litex.build.tools import replace_in_file
+        replace_in_file("build/litex_soc/gateware/litex_soc.v", "mem.init", "rom.init")
+        os.system("cp build/litex_soc/gateware/mem.init build/litex_soc/gateware/rom.init")
+        platform.add_source("build/litex_soc/gateware/litex_soc.v")
+        platform.add_source("build/litex_soc/gateware/rom.init", copy=True)
+        from litex.soc.cores.cpu.femtorv import FemtoRV
+        FemtoRV.add_sources(platform, "standard")
+        #  ...FIXME...
+
+        # Standalone SoC instance.
+        uart_pads = platform.request("serial")
+        self.specials += Instance("litex_soc",
+            i_clk     = ClockSignal("sys"),
+            i_rst     = ResetSignal("sys"),
+            o_uart_tx = uart_pads.tx,
+            i_uart_rx = uart_pads.rx,
+        )
+
 # Build --------------------------------------------------------------------------------------------
 
 def main():
