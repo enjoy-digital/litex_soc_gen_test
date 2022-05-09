@@ -63,11 +63,8 @@ class BaseSoC(SoCMini):
 
         # Add standalone SoC sources.
         #  ...FIXME...
-        from litex.build.tools import replace_in_file
-        replace_in_file("build/litex_soc/gateware/litex_soc.v", "mem.init", "rom.init")
-        os.system("cp build/litex_soc/gateware/mem.init build/litex_soc/gateware/rom.init")
         platform.add_source("build/litex_soc/gateware/litex_soc.v")
-        platform.add_source("build/litex_soc/gateware/rom.init", copy=True)
+        platform.add_source("build/litex_soc/gateware/litex_soc_rom.init", copy=True)
         from litex.soc.cores.cpu.femtorv import FemtoRV
         FemtoRV.add_sources(platform, "standard")
         #  ...FIXME...
