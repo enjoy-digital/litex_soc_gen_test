@@ -38,6 +38,9 @@ class _CRG(Module):
 # BaseSoC ------------------------------------------------------------------------------------------
 
 class BaseSoC(SoCMini):
+    mem_map = {**SoCCore.mem_map, **{
+        "csr": 0x10000000,
+    }}
     def __init__(self, variant="a7-35", toolchain="vivado", sys_clk_freq=int(100e6), with_led_chaser=True):
         platform = digilent_arty.Platform(variant=variant, toolchain=toolchain)
 
@@ -68,6 +71,7 @@ class BaseSoC(SoCMini):
         self.submodules += uart_mux
 
         # Shared RAM.
+        self.add_ram("shared_ram", 0x0000_0000, 0x1000, contents=[i for i in range(16)])
 
         # FemtoRV SoC.
         # ------------
@@ -84,6 +88,7 @@ class BaseSoC(SoCMini):
         FemtoRV.add_sources(platform, "standard")
 
         # Do standalone SoC instance.
+        mmap_wb = wishbone.Interface(data_width=32, adr_width=29)
         self.specials += Instance("femtorv_soc",
             # Clk/Rst.
             i_clk     = ClockSignal("sys"),
@@ -92,7 +97,21 @@ class BaseSoC(SoCMini):
             # UART.
             o_uart_tx = uart_mux_pads[0].tx,
             i_uart_rx = uart_mux_pads[0].rx,
+
+            # MMAP.
+            o_mmap_m_adr   = mmap_wb.adr[:28], # CHECKME/FIXME: Base address.
+            o_mmap_m_dat_w = mmap_wb.dat_w,
+            i_mmap_m_dat_r = mmap_wb.dat_r,
+            o_mmap_m_sel   = mmap_wb.sel,
+            o_mmap_m_cyc   = mmap_wb.cyc,
+            o_mmap_m_stb   = mmap_wb.stb,
+            i_mmap_m_ack   = mmap_wb.ack,
+            o_mmap_m_we    = mmap_wb.we,
+            o_mmap_m_cti   = mmap_wb.cti,
+            o_mmap_m_bte   = mmap_wb.bte,
+            i_mmap_m_err   = mmap_wb.err,
         )
+        self.bus.add_master(master=mmap_wb)
 
         # FireV SoC.
         # ----------
@@ -109,6 +128,7 @@ class BaseSoC(SoCMini):
         FireV.add_sources(platform, "standard")
 
         # Do standalone SoC instance.
+        mmap_wb = wishbone.Interface(data_width=32, adr_width=29)
         self.specials += Instance("firev_soc",
             # Clk/Rst.
             i_clk     = ClockSignal("sys"),
@@ -117,7 +137,21 @@ class BaseSoC(SoCMini):
             # UART.
             o_uart_tx = uart_mux_pads[1].tx,
             i_uart_rx = uart_mux_pads[1].rx,
+
+            # MMAP.
+            o_mmap_m_adr   = mmap_wb.adr[:28], # CHECKME/FIXME: Base address.
+            o_mmap_m_dat_w = mmap_wb.dat_w,
+            i_mmap_m_dat_r = mmap_wb.dat_r,
+            o_mmap_m_sel   = mmap_wb.sel,
+            o_mmap_m_cyc   = mmap_wb.cyc,
+            o_mmap_m_stb   = mmap_wb.stb,
+            i_mmap_m_ack   = mmap_wb.ack,
+            o_mmap_m_we    = mmap_wb.we,
+            o_mmap_m_cti   = mmap_wb.cti,
+            o_mmap_m_bte   = mmap_wb.bte,
+            i_mmap_m_err   = mmap_wb.err,
         )
+        self.bus.add_master(master=mmap_wb)
 
 # Build --------------------------------------------------------------------------------------------
 
