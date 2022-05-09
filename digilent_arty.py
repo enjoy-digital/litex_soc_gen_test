@@ -13,6 +13,7 @@ from litex.soc.integration.soc import SoCRegion
 from litex.soc.integration.soc_core import *
 from litex.soc.integration.builder import *
 from litex.soc.cores.led import LedChaser
+from litex.soc.cores.uart import *
 
 # CRG ----------------------------------------------------------------------------------------------
 
@@ -58,24 +59,64 @@ class BaseSoC(SoCMini):
 
         # Standalone SoC Generation/Re-Integration -------------------------------------------------
 
+        # Shared UART.
+        uart_pads = platform.request("serial")
+        uart_sel  = platform.request("user_sw", 0)
+        uart_mux_pads = [UARTPads() for _ in range(2)]
+        uart_mux      = UARTMultiplexer(uart_mux_pads, uart_pads)
+        self.comb += uart_mux.sel.eq(uart_sel)
+        self.submodules += uart_mux
+
+        # Shared RAM.
+
+        # FemtoRV SoC.
+        # ------------
+
         # Generate standalone SoC.
-        os.system("litex_soc_gen --cpu-type=femtorv --bus-standard=wishbone --sys-clk-freq=100e6 --build")
+        os.system("litex_soc_gen --cpu-type=femtorv --bus-standard=wishbone --sys-clk-freq=100e6 --name=femtorv_soc --build")
 
         # Add standalone SoC sources.
-        #  ...FIXME...
-        platform.add_source("build/litex_soc/gateware/litex_soc.v")
-        platform.add_source("build/litex_soc/gateware/litex_soc_rom.init", copy=True)
+        platform.add_source("build/femtorv_soc/gateware/femtorv_soc.v")
+        platform.add_source("build/femtorv_soc/gateware/femtorv_soc_rom.init", copy=True)
+
+        # Add CPU sources.
         from litex.soc.cores.cpu.femtorv import FemtoRV
         FemtoRV.add_sources(platform, "standard")
-        #  ...FIXME...
 
-        # Standalone SoC instance.
-        uart_pads = platform.request("serial")
-        self.specials += Instance("litex_soc",
+        # Do standalone SoC instance.
+        self.specials += Instance("femtorv_soc",
+            # Clk/Rst.
             i_clk     = ClockSignal("sys"),
             i_rst     = ResetSignal("sys"),
-            o_uart_tx = uart_pads.tx,
-            i_uart_rx = uart_pads.rx,
+
+            # UART.
+            o_uart_tx = uart_mux_pads[0].tx,
+            i_uart_rx = uart_mux_pads[0].rx,
+        )
+
+        # FireV SoC.
+        # ----------
+
+        # Generate standalone SoC.
+        os.system("litex_soc_gen --cpu-type=firev --bus-standard=wishbone --sys-clk-freq=100e6 --name=firev_soc --build")
+
+        # Add standalone SoC sources.
+        platform.add_source("build/firev_soc/gateware/firev_soc.v")
+        platform.add_source("build/firev_soc/gateware/firev_soc_rom.init", copy=True)
+
+        # Add CPU sources.
+        from litex.soc.cores.cpu.firev import FireV
+        FireV.add_sources(platform, "standard")
+
+        # Do standalone SoC instance.
+        self.specials += Instance("firev_soc",
+            # Clk/Rst.
+            i_clk     = ClockSignal("sys"),
+            i_rst     = ResetSignal("sys"),
+
+            # UART.
+            o_uart_tx = uart_mux_pads[1].tx,
+            i_uart_rx = uart_mux_pads[1].rx,
         )
 
 # Build --------------------------------------------------------------------------------------------
