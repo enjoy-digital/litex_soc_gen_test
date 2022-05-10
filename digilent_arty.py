@@ -88,7 +88,7 @@ class BaseSoC(SoCMini):
         FemtoRV.add_sources(platform, "standard")
 
         # Do standalone SoC instance.
-        mmap_wb = wishbone.Interface(data_width=32, adr_width=29)
+        mmap_wb = wishbone.Interface()
         self.specials += Instance("femtorv_soc",
             # Clk/Rst.
             i_clk     = ClockSignal("sys"),
@@ -99,7 +99,7 @@ class BaseSoC(SoCMini):
             i_uart_rx = uart_mux_pads[0].rx,
 
             # MMAP.
-            o_mmap_m_adr   = mmap_wb.adr[:28], # CHECKME/FIXME: Base address.
+            o_mmap_m_adr   = mmap_wb.adr[:24], # CHECKME/FIXME: Base address
             o_mmap_m_dat_w = mmap_wb.dat_w,
             i_mmap_m_dat_r = mmap_wb.dat_r,
             o_mmap_m_sel   = mmap_wb.sel,
@@ -112,6 +112,15 @@ class BaseSoC(SoCMini):
             i_mmap_m_err   = mmap_wb.err,
         )
         self.bus.add_master(master=mmap_wb)
+
+        # Litescope.
+        from litescope import LiteScopeAnalyzer
+        self.submodules.analyzer = LiteScopeAnalyzer([mmap_wb],
+            depth        = 512,
+            clock_domain = "sys",
+            samplerate   = sys_clk_freq,
+            csr_csv      = "analyzer.csv"
+        )
 
         # FireV SoC.
         # ----------
@@ -128,7 +137,7 @@ class BaseSoC(SoCMini):
         FireV.add_sources(platform, "standard")
 
         # Do standalone SoC instance.
-        mmap_wb = wishbone.Interface(data_width=32, adr_width=29)
+        mmap_wb = wishbone.Interface()
         self.specials += Instance("firev_soc",
             # Clk/Rst.
             i_clk     = ClockSignal("sys"),
@@ -139,7 +148,7 @@ class BaseSoC(SoCMini):
             i_uart_rx = uart_mux_pads[1].rx,
 
             # MMAP.
-            o_mmap_m_adr   = mmap_wb.adr[:28], # CHECKME/FIXME: Base address.
+            o_mmap_m_adr   = mmap_wb.adr[:24], # CHECKME/FIXME: Base address.
             o_mmap_m_dat_w = mmap_wb.dat_w,
             i_mmap_m_dat_r = mmap_wb.dat_r,
             o_mmap_m_sel   = mmap_wb.sel,
